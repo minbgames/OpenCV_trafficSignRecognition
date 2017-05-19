@@ -5,8 +5,8 @@ using namespace std;
 
 int main(void)
 {
-	// VideoCapture capture("../test_1280.mp4");
-	VideoCapture capture(1);
+	VideoCapture capture("../test_1280.mp4");
+	// VideoCapture capture(1);
 	if (!capture.isOpened()) {
 		std::cerr << "Could not open camera" << std::endl;
 		return 0;
@@ -17,13 +17,6 @@ int main(void)
 	int final_goodmatch;
 	int roi_ok=0;
 	int traffic_ok=0;
-	int flag = 0;
-	int roi_off_ok=0;
-	float ratio=0;
-	int flag2=1;
-	int result_traffic=0;
-
-	int output_traffic[8]={-1,0,1,2,3,4,5,6};
 	//setting
 	Mat frame;
 	Mat frame_gray;
@@ -45,7 +38,7 @@ int main(void)
 	Scalar lowerb_red2(175, 140, 0);
 	Scalar upperb_red2(179, 255, 255);
 	// blue value range
-	Scalar lowerb_blue(100, 100, 0);
+	Scalar lowerb_blue(100, 210, 0);
 	Scalar upperb_blue(130, 255, 255);
 
 	//0.횡단보도 1.협로구간 2.동적장애물 3.정적장애물 4.곡선코스 5.U턴 6.자동주차
@@ -114,53 +107,21 @@ int main(void)
 
 		rectangle( frame, Point(left,top), Point(left+width,top+height), Scalar(0,0,255),1 );
 
-		ratio =(float)width/height;
-
-		if(ratio>1.2||ratio<0.8){
-			width=1;
-			height=1;
-		}
-		else{
-			if(width >100) width = 1;
-			if(height >100)	height = 1;
-		}
-
 		max_goodmatch = 0;
 		final_goodmatch = -1;
 
 		if(width>50 && height>50){
-			Rect rect(Point(left,top), Point(left+width,top+height));
-
-			wanted_frame = frame(rect);
-
-			resize( wanted_frame, resized_frame, Size( 190, 190 ), 0, 0, CV_INTER_CUBIC );
-			cvtColor(resized_frame, resized_frame_gray, CV_BGR2GRAY);
-
 			roi_ok=roi_ok+1;
 			if(roi_ok>40){
-				if(flag2){
-					traffic_ok=traffic_ok+1;
-					if(traffic_ok>7) traffic_ok=7;
-					flag2=0;
-					result_traffic= traffic_ok;
-				}
-				flag=1;
+				traffic_ok=1;
 			}
 			else{
-				flag2=1;
+				traffic_ok=0;
 			}
 			imshow("output_frame",resized_frame);
 		}
 		else{
 			roi_ok=0;
-			if(flag){
-				roi_off_ok=roi_off_ok+1;
-				if(roi_off_ok>50){
-					result_traffic=0;
-					flag=0;
-					roi_off_ok=0;
-				}
-			}
 		}
 
 		imshow("original",frame);
@@ -168,9 +129,8 @@ int main(void)
 		// final_goodmatch //roi_ok 출력
 
 		cout << "width-height: " << width << " , "<< height << endl;
-		cout << "roi: " << roi_ok << "   tra: " << traffic_ok <<"   flag: " << flag <<  "roff: " << roi_off_ok << " ratio:" << ratio << endl;
-		cout << "flag2: " << flag2 << " result_traffic: " << result_traffic << endl;
-		cout << "output: " << output_traffic[result_traffic] << " traffic_ok:" << traffic_ok << endl;
+		cout << "roi: " << roi_ok << "   tra: " << traffic_ok << endl;
+
 		if (waitKey(10) >= 0) break;
 		}
 		return 0;

@@ -29,3 +29,11 @@ color_search:
 
 color_search_make:
 	g++ -o color_search_exe color_search.cpp `pkg-config opencv --cflags --libs` -std=c++11
+
+total2:
+	rm total2_exe
+	g++ -o total2_exe total_traffic3.cpp `pkg-config opencv --cflags --libs` -std=c++11
+	./total2_exe
+
+total2_make:
+	g++ -o total2_exe total_traffic3.cpp `pkg-config opencv --cflags --libs` -std=c++11

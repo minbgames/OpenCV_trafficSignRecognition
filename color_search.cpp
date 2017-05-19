@@ -6,7 +6,7 @@ using namespace std;
 
 int main(void)
 {
-    VideoCapture cap("source/test_video_2.mp4");
+    VideoCapture cap(1);
 
     //웹캡에서 캡처되는 이미지 크기를 320x240으로 지정
     cap.set(CAP_PROP_FRAME_WIDTH,640);
@@ -101,10 +101,7 @@ int main(void)
           imshow("이진화 영상", img_binary);
           imshow("원본 영상", img_input);
 
-          while(1){
-            if(waitKey(1)>0) break;
-          }
-          // if(waitKey(1)>0) break;
+          if(waitKey(1)==27) break;
     }
     return 0;
-}
+  }

@@ -5,8 +5,8 @@ using namespace std;
 
 int main(void)
 {
-	// VideoCapture capture("../test_1280.mp4");
-	VideoCapture capture(1);
+	VideoCapture capture("../test_1280.mp4");
+	// VideoCapture capture(1);
 	if (!capture.isOpened()) {
 		std::cerr << "Could not open camera" << std::endl;
 		return 0;
@@ -15,15 +15,10 @@ int main(void)
 	int k = 2;
 	int max_goodmatch;
 	int final_goodmatch;
-	int roi_ok=0;
-	int traffic_ok=0;
-	int flag = 0;
-	int roi_off_ok=0;
-	float ratio=0;
-	int flag2=1;
-	int result_traffic=0;
-
-	int output_traffic[8]={-1,0,1,2,3,4,5,6};
+	int pre_final_goodmatch;
+	int roi_ok;
+	int traffic_result=-1;
+	int number=0;
 	//setting
 	Mat frame;
 	Mat frame_gray;
@@ -45,7 +40,7 @@ int main(void)
 	Scalar lowerb_red2(175, 140, 0);
 	Scalar upperb_red2(179, 255, 255);
 	// blue value range
-	Scalar lowerb_blue(100, 100, 0);
+	Scalar lowerb_blue(100, 210, 0);
 	Scalar upperb_blue(130, 255, 255);
 
 	//0.횡단보도 1.협로구간 2.동적장애물 3.정적장애물 4.곡선코스 5.U턴 6.자동주차
@@ -114,21 +109,15 @@ int main(void)
 
 		rectangle( frame, Point(left,top), Point(left+width,top+height), Scalar(0,0,255),1 );
 
-		ratio =(float)width/height;
-
-		if(ratio>1.2||ratio<0.8){
-			width=1;
-			height=1;
-		}
-		else{
-			if(width >100) width = 1;
-			if(height >100)	height = 1;
-		}
-
 		max_goodmatch = 0;
 		final_goodmatch = -1;
+		roi_ok = -1;
+
+		if(width>250) width=1;
+		if(height>250) height =1;
 
 		if(width>50 && height>50){
+			roi_ok=1;
 			Rect rect(Point(left,top), Point(left+width,top+height));
 
 			wanted_frame = frame(rect);
@@ -136,31 +125,86 @@ int main(void)
 			resize( wanted_frame, resized_frame, Size( 190, 190 ), 0, 0, CV_INTER_CUBIC );
 			cvtColor(resized_frame, resized_frame_gray, CV_BGR2GRAY);
 
-			roi_ok=roi_ok+1;
-			if(roi_ok>40){
-				if(flag2){
-					traffic_ok=traffic_ok+1;
-					if(traffic_ok>7) traffic_ok=7;
-					flag2=0;
-					result_traffic= traffic_ok;
+			/**************************matching*****************************/
+			vector<KeyPoint> key_frame, key_img[7];
+			Mat des_frame, des_img[7];
+
+			Ptr<ORB> orbF = ORB::create(1000);
+			orbF->detectAndCompute(resized_frame_gray, noArray(), key_frame, des_frame);
+			orbF->detectAndCompute(img[0], noArray(), key_img[0], des_img[0]);
+			orbF->detectAndCompute(img[1], noArf(ray(), key_img[1], des_img[1]);
+			orbF->detectAndCompute(img[2], noArray(), key_img[2], des_img[2]);
+			orbF->detectAndCompute(img[3], noArray(), key_img[3], des_img[3]);
+			orbF->detectAndCompute(img[4], noArray(), key_img[4], des_img[4]);
+			orbF->detectAndCompute(img[5], noArray(), key_img[5], des_img[5]);
+			orbF->detectAndCompute(img[6], noArray(), key_img[6], des_img[6]);
+
+			if(des_frame.elemSize()>0){
+
+				vector< DMatch > goodMatches[7];
+				float nndrRatio = 0.6f;
+
+				Mat indices;
+				Mat dists;
+
+				for (int index = 0; index < 7; index++) {
+					try{
+						flann::Index flannIndex(des_frame, flann::LshIndexParams(12, 20, 2), cvflann::FLANN_DIST_HAMMING);
+						flannIndex.knnSearch(des_img[index], indices, dists, k, flann::SearchParams());
+					}
+					catch(Exception& e){
+						continue;
+					}
+
+					for (int i = 0; i < des_img[index].rows; i++)
+					{
+						float d1, d2;
+						d1 = (float)dists.at<int>(i, 0);
+						d2 = (float)dists.at<int>(i, 1);
+
+						if (indices.at<int>(i, 0) >= 0 && indices.at<int>(i, 1) >= 0 &&
+							d1 <= nndrRatio*d2)
+						{
+							DMatch match(i, indices.at<int>(i, 0), d1);
+							goodMatches[index].push_back(math);
+						}
+					}
 				}
-				flag=1;
-			}
-			else{
-				flag2=1;
+
+				for (int index = 0; index < 7; index++) {
+					if(goodMatches[index].size() > max_goodmatch)
+					{
+						max_goodmatch = goodMatches[index].size();
+						final_goodmatch = index;
+						if(pre_final_goodmatch==final_goodmatch){
+							number = number+1;
+							if(number>5){
+								traffic_result=final_goodmatch;
+							}
+						}
+						else{
+							number=0;
+						}
+						pre_final_goodmatch=final_goodmatch;
+					}
+					cout << "goodmatches["<< index <<"].size()=" << goodMatches[index].size() << endl;
+				}
+				cout << "max_goodmatch=" << max_goodmatch << endl;
+
+				if (max_goodmatch > 10)
+				{
+					// draw good_matches
+					Mat imgMatches;
+					drawMatches(img[final_goodmatch], key_img[final_goodmatch], resized_frame_gray, key_frame,
+					goodMatches[final_goodmatch], imgMatches, Scalar::all(-1), Scalar::all(-1),
+					vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS); //DEFAULT
+					imshow("Good Matches", imgMatches);
+				}
+				else{
+					final_goodmatch = -1;
+				}
 			}
 			imshow("output_frame",resized_frame);
-		}
-		else{
-			roi_ok=0;
-			if(flag){
-				roi_off_ok=roi_off_ok+1;
-				if(roi_off_ok>50){
-					result_traffic=0;
-					flag=0;
-					roi_off_ok=0;
-				}
-			}
 		}
 
 		imshow("original",frame);
@@ -168,9 +212,8 @@ int main(void)
 		// final_goodmatch //roi_ok 출력
 
 		cout << "width-height: " << width << " , "<< height << endl;
-		cout << "roi: " << roi_ok << "   tra: " << traffic_ok <<"   flag: " << flag <<  "roff: " << roi_off_ok << " ratio:" << ratio << endl;
-		cout << "flag2: " << flag2 << " result_traffic: " << result_traffic << endl;
-		cout << "output: " << output_traffic[result_traffic] << " traffic_ok:" << traffic_ok << endl;
+		cout << "roi: " << roi_ok << "   final: " << final_goodmatch << "   num: " << number << endl;
+
 		if (waitKey(10) >= 0) break;
 		}
 		return 0;
